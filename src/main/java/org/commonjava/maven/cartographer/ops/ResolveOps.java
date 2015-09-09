@@ -37,7 +37,6 @@ import org.commonjava.maven.atlas.graph.RelationshipGraphException;
 import org.commonjava.maven.atlas.graph.RelationshipGraphFactory;
 import org.commonjava.maven.atlas.graph.ViewParams;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
-import org.commonjava.maven.atlas.graph.mutate.ManagedDependencyMutator;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.traverse.PathsTraversal;
 import org.commonjava.maven.atlas.graph.traverse.TraversalType;
@@ -61,6 +60,7 @@ import org.commonjava.maven.cartographer.dto.GraphComposition;
 import org.commonjava.maven.cartographer.dto.GraphDescription;
 import org.commonjava.maven.cartographer.dto.RepositoryContentRecipe;
 import org.commonjava.maven.cartographer.dto.ResolverRecipe;
+import org.commonjava.maven.cartographer.util.CartoGraphMutatorSelector;
 import org.commonjava.maven.galley.maven.ArtifactManager;
 import org.commonjava.maven.galley.maven.GalleyMavenException;
 import org.commonjava.maven.galley.maven.model.view.DependencyView;
@@ -147,7 +147,7 @@ public class ResolveOps
         //        final DefaultDiscoveryConfig config = new DefaultDiscoveryConfig( source );
         final DefaultDiscoveryConfig config = new DefaultDiscoveryConfig( options.getDiscoveryConfig() );
         config.setEnabled( true );
-
+ 
         final List<? extends Location> locations = initDiscoveryLocations( config );
         final List<ProjectVersionRef> specifics = new ArrayList<ProjectVersionRef>();
 
@@ -317,7 +317,8 @@ public class ResolveOps
         final int projectSz = refMap.size();
         final List<RepoContentCollector> collectors = new ArrayList<RepoContentCollector>( projectSz );
 
-        final DiscoveryConfig dconf = createDiscoveryConfig( recipe, sourceUri );
+        // don't need to pass any graphDescription, because mutator is not used after this point
+        final DiscoveryConfig dconf = createDiscoveryConfig( recipe, null, sourceUri );
 
         for ( final Map.Entry<ProjectVersionRef, ProjectRefCollection> entry : refMap.entrySet() )
         {
@@ -407,7 +408,7 @@ public class ResolveOps
 
             final ViewParams params = new ViewParams.Builder( recipe.getWorkspaceId(), roots )
                                                     .withFilter( filter )
-                                                    .withMutator( new ManagedDependencyMutator() )
+                                                    .withMutator( CartoGraphMutatorSelector.selectMutator( gd.getPresetParams() ) )
                                                     .withSelections( injectedDepMgmt )
                                                     .build();
 
@@ -516,7 +517,7 @@ public class ResolveOps
                 // TODO: Do we need to resolve specific versions for these roots?
                 final ViewParams params =
                     new ViewParams.Builder( recipe.getWorkspaceId(), roots ).withFilter( recipe.buildFilter( graphDesc.filter() ) )
-                                                                            .withMutator( new ManagedDependencyMutator() )
+                                                                            .withMutator( CartoGraphMutatorSelector.selectMutator( graphDesc.getPresetParams() ) )
                                                                             .withSelections( injectedDepMgmt )
                                                                             .build();
 
@@ -647,10 +648,10 @@ public class ResolveOps
         final List<GraphDescription> outDescs = new ArrayList<GraphDescription>( recipe.getGraphComposition()
                                                                                        .size() );
 
-        final AggregationOptions options = createAggregationOptions( recipe, sourceUri );
 
         for ( final GraphDescription desc : recipe.getGraphComposition() )
         {
+            final AggregationOptions options = createAggregationOptions( recipe, desc, sourceUri );
             final ProjectVersionRef[] rootsArray = desc.rootsArray();
 
             final ViewParams params =
@@ -679,7 +680,7 @@ public class ResolveOps
                 }
                 else
                 {
-                    final GraphDescription outGraph = new GraphDescription( graph.getFilter(), rootsArray );
+                    final GraphDescription outGraph = new GraphDescription( graph.getFilter(), desc.getPresetParams(), rootsArray );
                     outGraph.setGraphParams( graph.getParams() );
 
                     outDescs.add( outGraph );
@@ -698,12 +699,14 @@ public class ResolveOps
                                            .getCalculation(), outDescs );
     }
 
-    private AggregationOptions createAggregationOptions( final ResolverRecipe recipe, final URI sourceUri )
+    private AggregationOptions createAggregationOptions( final ResolverRecipe recipe, 
+                                                         final GraphDescription graphDescription,
+                                                         final URI sourceUri )
         throws CartoDataException
     {
         final DefaultAggregatorOptions options = new DefaultAggregatorOptions();
 
-        options.setDiscoveryConfig( createDiscoveryConfig( recipe, sourceUri ) );
+        options.setDiscoveryConfig( createDiscoveryConfig( recipe, graphDescription, sourceUri ) );
 
         options.setProcessIncompleteSubgraphs( true );
         options.setProcessVariableSubgraphs( true );
@@ -711,7 +714,8 @@ public class ResolveOps
         return options;
     }
 
-    private DiscoveryConfig createDiscoveryConfig( final ResolverRecipe recipe, final URI sourceUri )
+    private DiscoveryConfig createDiscoveryConfig( final ResolverRecipe recipe, final GraphDescription graphDescription,
+                                                   final URI sourceUri )
         throws CartoDataException
     {
         final DefaultDiscoveryConfig dconf = new DefaultDiscoveryConfig( sourceUri );
@@ -719,6 +723,11 @@ public class ResolveOps
 
         dconf.setEnabled( recipe.isResolve() );
         dconf.setTimeoutMillis( 1000 * recipe.getTimeoutSecs() );
+
+        if ( graphDescription != null )
+        {
+            dconf.setMutator( CartoGraphMutatorSelector.selectMutator( graphDescription.getPresetParams() ) );
+        }
 
         initDiscoveryLocations( dconf );
 

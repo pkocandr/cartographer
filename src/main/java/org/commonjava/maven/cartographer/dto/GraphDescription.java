@@ -49,7 +49,10 @@ public class GraphDescription
                              final Collection<ProjectVersionRef> roots )
     {
         this.preset = preset;
-        this.presetParams = new TreeMap<>( presetParams );
+        if ( presetParams != null )
+        {
+            this.presetParams.putAll( presetParams );
+        }
         this.roots = new TreeSet<ProjectVersionRef>( roots );
     }
 
@@ -59,15 +62,21 @@ public class GraphDescription
         this( preset, presetParams, Arrays.asList( roots ) );
     }
 
-    public GraphDescription( final ProjectRelationshipFilter filter, final Collection<ProjectVersionRef> roots )
+    public GraphDescription( final ProjectRelationshipFilter filter, final Map<String, Object> presetParams,
+                             final Collection<ProjectVersionRef> roots )
     {
         this.filter = filter;
+        if ( presetParams != null )
+        {
+            this.presetParams.putAll( presetParams );
+        }
         this.roots = new TreeSet<ProjectVersionRef>( roots );
     }
 
-    public GraphDescription( final ProjectRelationshipFilter filter, final ProjectVersionRef... roots )
+    public GraphDescription( final ProjectRelationshipFilter filter, final Map<String, Object> presetParams,
+                             final ProjectVersionRef... roots )
     {
-        this( filter, Arrays.asList( roots ) );
+        this( filter, presetParams, Arrays.asList( roots ) );
     }
 
     public Set<ProjectVersionRef> getRoots()

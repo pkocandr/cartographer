@@ -30,7 +30,6 @@ import org.commonjava.maven.atlas.graph.RelationshipGraphException;
 import org.commonjava.maven.atlas.graph.RelationshipGraphFactory;
 import org.commonjava.maven.atlas.graph.ViewParams;
 import org.commonjava.maven.atlas.graph.mutate.GraphMutator;
-import org.commonjava.maven.atlas.graph.mutate.ManagedDependencyMutator;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
@@ -41,6 +40,7 @@ import org.commonjava.maven.cartographer.dto.GraphCalculation.Type;
 import org.commonjava.maven.cartographer.dto.GraphComposition;
 import org.commonjava.maven.cartographer.dto.GraphDescription;
 import org.commonjava.maven.cartographer.dto.GraphDifference;
+import org.commonjava.maven.cartographer.util.CartoGraphMutatorSelector;
 
 @ApplicationScoped
 public class CalculationOps
@@ -62,8 +62,6 @@ public class CalculationOps
                                                                final String workspaceId )
         throws CartoDataException
     {
-        final ManagedDependencyMutator mutator = new ManagedDependencyMutator();
-
         RelationshipGraph firstWeb = null;
         RelationshipGraph secondWeb = null;
         final Collection<ProjectRelationship<?>> firstAll;
@@ -75,12 +73,11 @@ public class CalculationOps
                 ViewParams params = from.view();
                 if ( params == null )
                 {
-                    params = new ViewParams( workspaceId, from.filter(), mutator, from.rootsArray() );
+                    final GraphMutator fromMutator = CartoGraphMutatorSelector.selectMutator( from.getPresetParams() );
+                    params = new ViewParams( workspaceId, from.filter(), fromMutator, from.rootsArray() );
                 }
 
-                firstWeb =
- graphFactory.open( params,
-                                       false );
+                firstWeb = graphFactory.open( params, false );
             }
             catch ( final RelationshipGraphException e )
             {
@@ -93,12 +90,11 @@ public class CalculationOps
                 ViewParams params = to.view();
                 if ( params == null )
                 {
-                    params = new ViewParams( workspaceId, to.filter(), mutator, to.rootsArray() );
+                    final GraphMutator toMutator = CartoGraphMutatorSelector.selectMutator( to.getPresetParams() );
+                    params = new ViewParams( workspaceId, to.filter(), toMutator, to.rootsArray() );
                 }
 
-                secondWeb =
- graphFactory.open( params,
-                                       false );
+                secondWeb = graphFactory.open( params, false );
             }
             catch ( final RelationshipGraphException e )
             {
@@ -129,7 +125,6 @@ public class CalculationOps
                                                                        final GraphDescription to )
         throws CartoDataException
     {
-        final ManagedDependencyMutator mutator = new ManagedDependencyMutator();
         RelationshipGraph firstWeb = null;
         RelationshipGraph secondWeb = null;
 
@@ -142,12 +137,11 @@ public class CalculationOps
                 ViewParams params = from.view();
                 if ( params == null )
                 {
-                    params = new ViewParams( workspaceId, from.filter(), mutator, from.rootsArray() );
+                    final GraphMutator fromMutator = CartoGraphMutatorSelector.selectMutator( from.getPresetParams() );
+                    params = new ViewParams( workspaceId, from.filter(), fromMutator, from.rootsArray() );
                 }
 
-                firstWeb =
- graphFactory.open( params,
-                                       false );
+                firstWeb = graphFactory.open( params, false );
             }
             catch ( final RelationshipGraphException e )
             {
@@ -160,12 +154,11 @@ public class CalculationOps
                 ViewParams params = to.view();
                 if ( params == null )
                 {
-                    params = new ViewParams( workspaceId, to.filter(), mutator, to.rootsArray() );
+                    final GraphMutator toMutator = CartoGraphMutatorSelector.selectMutator( to.getPresetParams() );
+                    params = new ViewParams( workspaceId, to.filter(), toMutator, to.rootsArray() );
                 }
 
-                secondWeb =
- graphFactory.open( params,
-                                       false );
+                secondWeb = graphFactory.open( params, false );
             }
             catch ( final RelationshipGraphException e )
             {
@@ -269,7 +262,6 @@ public class CalculationOps
         Set<ProjectRelationship<?>> result = null;
         Set<ProjectVersionRef> roots = null;
 
-        final GraphMutator mutator = new ManagedDependencyMutator();
 
         for ( final GraphDescription desc : composition.getGraphs() )
         {
@@ -281,6 +273,7 @@ public class CalculationOps
                     ViewParams params = desc.view();
                     if ( params == null )
                     {
+                        final GraphMutator mutator = CartoGraphMutatorSelector.selectMutator( desc.getPresetParams() );
                         params = new ViewParams( workspaceId, desc.filter(), mutator, desc.rootsArray() );
                     }
 
