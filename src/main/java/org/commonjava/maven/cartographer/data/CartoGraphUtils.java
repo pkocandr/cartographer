@@ -15,6 +15,7 @@
  */
 package org.commonjava.maven.cartographer.data;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -147,9 +148,8 @@ public final class CartoGraphUtils
             {
                 graph.close();
             }
-            catch ( final RelationshipGraphException e )
+            catch ( final IOException e )
             {
-
                 LoggerFactory.getLogger( CartoGraphUtils.class )
                              .error( String.format( "Failed to close workspace: %s. Reason: %s", graph, e.getMessage() ),
                                      e );
